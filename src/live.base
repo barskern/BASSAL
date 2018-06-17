@@ -1,0 +1,128 @@
+# vi:syntax=sh
+set -e
+
+# Check that dialog is installed
+pacman --sync --noconfirm --needed dialog \
+|| { echo "Error at start of script. Are you sure youre running this script as root? Are you sure you have an internet connection?"; exit 1; }
+
+# Check that the current system supports UEFI
+[[ ! -d "/sys/firmware/efi" ]] \
+&& { echo "You have to be booted with EFI to use this script. Install a minimal ArchLinux installation and run \"bassal.sh\" to use my custom configurations."; exit 1; }
+
+### Welcome message ###
+#######################
+
+dialog \
+	--colors \
+	--defaultno \
+	--title "Welcome to the pure setup of BASSEL" \
+	--yesno "
+	This pure setup will do \Z3EVERYTHING\Zn:
+	
+	- Partitioning
+	- Mounting
+	- Installing
+	- Configuring
+	
+	If you're not looking for the full package, use \"bassal.sh\" instead which only installs and configures custom settings" \
+	0 60 \
+|| exit
+
+### Actions done pre-chroot ###
+###############################
+
+dialog_warning "This script will erase \Zb\Z1\Zr ALL \Zn data on the disk that you choose. Are you sure you want to run it?"
+
+## Find all possible disks
+possible_disks=$(lsblk --raw --paths --output NAME,MODEL,SIZE,TYPE | grep "disk" | awk '{ print $1 " " $2 "(" $3 ")" }')
+
+## Make user select a disk
+selected_disk=$(dialog \
+	--stdout \
+	--title "Select disk to partition" \
+	--menu "
+	Select a disk to partition with the following partitions:
+       
+	- EFI-System partition (512MB)
+       	- Root partition (32GB)
+	- Home partition (Remaining space)
+       	- Swap partition (8GB)" \
+	0 60 0 \
+	$possible_disks)
+
+is_mounted=$(lsblk --raw --paths --noheadings --output MOUNTPOINT "$selected_disk")
+[[ ! -z $is_mounted ]] && { dialog_error "$selected_disk is already mounted. Please unmount it before trying to partition it"; exit 1; }
+
+dialog_warning "Zb\Z3\Zr $selected_disk \Zn will be \Zb\Z3\Zr fully erased and overwritten \Zn with a new GPT partition table. Still sure?"
+
+efi_part="$selected_disk$EFI_DEV_NR"
+root_part="$selected_disk$ROOT_DEV_NR"
+home_part="$selected_disk$HOME_DEV_NR"
+swap_part="$selected_disk$SWAP_DEV_NR"
+
+log "Creating partitions"
+cat <<EOF | gdisk "$selected_disk"
+o
+y
+n
+${EFI_DEV_NR}
+
++${EFI_SIZE}
+EF00
+n
+${ROOT_DEV_NR}
+
++${ROOT_SIZE}
+8304
+n
+${SWAP_DEV_NR}
+-${SWAP_SIZE}
+
+8200
+n
+${HOME_DEV_NR}
+
+
+8302
+w
+y
+EOF
+
+log "Probing partitions to update active partition table..."
+partprobe
+
+log "Formatting partitions..."
+mkfs.fat -F 32 -n "ARCH_EFI" "$efi_part"
+mkfs.ext4 -F -q -L "Linux_x86-64_(/)" "$root_part"
+mkfs.ext4 -F -q -L "Linux_/home" "$home_part"
+mkswap -L "Linux_swap" -c "$swap_part"
+
+log "Mounting partitons..."
+swapon "$swap_part"
+mount "$root_part" /mnt
+mkdir -p /mnt/home
+mkdir -p /mnt/boot 
+mount "$efi_part" /mnt/boot 
+mount "$home_part" /mnt/home 
+
+log "Successfully partitionned and mounted $selected_disk\n\n$(lsblk --output NAME,SIZE,MOUNTPOINT $selected_disk)"
+
+### Do the actual installation ###
+##################################
+
+pacstrap /mnt ${BASE_PKGS[@]} 
+
+# Generate fstab
+genfstab -U /mnt >>/mnt/etc/fstab
+
+# Ask for hostname
+dialog --no-cancel --title "Specify hostname" --inputbox "" 8 60 2>/mnt/etc/hostname
+
+### Run a script as chroot in the newly made installation ###
+#############################################################
+
+get_file "bassal_chroot.sh" 
+chroot_script=${__}
+
+arch-chroot /mnt bash "$chroot_script"
+

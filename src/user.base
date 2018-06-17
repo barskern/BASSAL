@@ -1,0 +1,67 @@
+# vi:syntax=sh
+set -e
+
+### Install packages from AUR ###
+#################################
+
+install_aur_pkgs() {
+	command -v packer || {
+		tmp_dir=$(mktemp -d)
+		git clone -q https://aur.archlinux.org/packer.git $tmp_dir
+		cd "$tmp_dir"
+		makepkg --clean \
+			--install \
+			--rmdeps \
+			--syncdeps \
+			--needed \
+			--noconfirm \
+			--noprogressbar
+		cd -
+	}
+
+	command -v packer || { dialog_error "Packer did not install successfully, please install it manually and then rerun script"; exit 1; }
+
+	install_aur_pkg() {
+		local pkg=$1
+		packer -S --noconfirm --noedit "$pkg"
+	}
+
+	get_file "packages_aur.csv"
+	pkgs_aur_file=${__}
+
+	readarray pkgs_aur <<< "$(cat "$pkgs_aur_file" | cut -d ',' -f 1)"
+
+	map_with_status "Building and installing packages from AUR" install_aur_pkg pkgs_aur[@]
+}
+install_aur_pkgs
+
+### Download dotfiles with homesick ###
+#######################################
+
+setup_dotfiles() {
+	# Make sure that ruby is installed
+	[[ -z "$(pacman -Q ruby)" ]] && { display_error "Ruby has to be installed to run this script"; exit 1; }
+
+	log "Installing homesick with gem..."
+	gem install homesick --no-document
+
+	homesick_cmd="$(ruby -e 'print Gem.user_dir')/bin/homesick"
+
+	log "Cloning and linking castle $HOMESICK_CASTLE from $GITHUB_USER's github user..."
+	$homesick_cmd clone "$GITHUB_USER/$HOMESICK_CASTLE"
+	$homesick_cmd link "$HOMESICK_CASTLE"
+}
+setup_dotfiles
+
+### Configure user-environement ###
+###################################
+
+log "Downloading and installing antigen.."
+mkdir -p $HOME/.config
+curl -F git.io/antigen > $HOME/.config/antigen.zsh
+
+log "Adding .gitaliases to .gitconfig"
+echo -e "
+[include]
+	path = $HOME/.gitaliases
+" >> $HOME/.gitconfig

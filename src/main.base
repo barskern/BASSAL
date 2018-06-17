@@ -1,0 +1,99 @@
+# vi:syntax=sh
+set -e
+
+# Verify that "dialog" is installed
+pacman --sync --noconfirm --needed dialog \
+|| { echo "Error at start of script. Are you sure youre running this script as root?\
+Are you sure you have an internet connection?"; exit 1; }
+
+### Start the actual script with a welcome  ###
+###############################################
+
+dialog_message \
+"Barskern's Automatic Setup Scripts for ArchLinux" \
+"This script will download, install and configure my custom environment."
+
+### Install packages from packages.csv ###
+##########################################
+
+install_pkg() {
+	local pkgname=$1
+	pacman --sync --quiet --noconfirm --needed --noprogressbar "$pkgname"
+}
+
+
+get_file "packages.csv"
+pkgs_file=${__}
+
+readarray pkgs <<< "$(cat "$pkgs_file" | cut -d ',' -f 1)"
+
+#map_with_status "Installing packages" install_pkg pkgs[@]
+
+### Setup user environment ###
+##############################
+
+setup_user() {
+	local username=$1
+	# Setup for asking for a password
+	tmp_pass1=$(mktemp)
+	tmp_pass2=$(mktemp)
+	error=0
+	error_msg="\Zb\Z1\Zr Error: Passwords not matching \Zn"
+	prompt="Nothing will be displayed while you type"
+
+	dialog_message "Setup account for $username" "Since $username does not already exist, the following prompts will set a password for this user and initialize the user with a home directory"
+
+	# Creates a do-while loop which askes for passwords until two
+	# equal passwords are entered
+	while
+		dialog \
+			--no-cancel \
+			--colors \
+			--title "Enter password" \
+			--passwordbox "$prompt" \
+			0 60 \
+			2> $tmp_pass1 \
+		|| exit
+
+		pass=$(cat "$tmp_pass1")
+
+		dialog \
+			--no-cancel \
+			--title "Repeat your password" \
+			--passwordbox "" \
+			0 60 \
+			2> $tmp_pass2 \
+		|| exit
+
+		pass2=$(cat "$tmp_pass2")
+		
+		# Only add error message to prompt if it is not already added
+		if ([[ ! "$pass" == "$pass2" ]] && [[ $error == 0 ]]); then
+			prompt="$prompt\n\n$error_msg"
+			error=1
+		fi	  
+
+		[[ ! "$pass" == "$pass2" ]]	
+	do :; done
+	rm "$tmp_pass1" "$tmp_pass2"
+
+	useradd --create-home --gid wheel --password "$pass" "$username"
+}
+# Ask for username
+tmp_username=$(mktemp)
+dialog --no-cancel \
+	--title "Specify username" \
+	--inputbox "\nThis can either be the username of an existing user or a brand new username." 10 60 2> $tmp_username \
+|| exit
+
+username=$(cat "$tmp_username")
+rm "$tmp_username"
+
+# Setup user if user does not already exist
+[[ ! -z "$(cat /etc/passwd | cut -d ':' -f 1 | grep "$username")" ]] \
+|| setup_user "$username"
+
+# Download and run user configuration as newly created user
+get_file "bassal_user.sh"
+user_script=${__}
+su --command "$user_script" --shell /bin/bash "$username"

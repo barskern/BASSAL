@@ -1,0 +1,67 @@
+# vi:syntax=sh
+set -e
+
+### Configure locales ###
+#########################
+
+setup_locale() {
+	timedatectl set-ntp true
+
+	log "Setting timezone to $TZ"
+	ln -sf "/etc/usr/share/zoneinfo/$TZ" /etc/localtime
+	timedatectl set-timezone "$TZ"
+
+	log "Resetting previously set locale in /etc/locale.gen"
+	sed -i "s/\(^[^#]\)/#\1/" /etc/locale.gen
+
+	log "Generating the following locales: (${EXTRA_LOCALES[@]})"
+	for gen_local in ${EXTRA_LOCALES[@]}; do
+		sed -i "s/^#${gen_local}/${gen_local}/" /etc/locale.gen
+	done
+	locale-gen
+
+	log "Set main locale to be $LOCALE"
+	localectl set-locale "LANG=$LOCALE"
+
+	log "Set keyboard type to be $KB_LAYOUT $KB_MODEL $KB_VARIANT"
+	localectl set-x11-keymap "$KB_LAYOUT" "$KB_MODEL" "$KB_VARIANT" || localectl set-keymap "$KB_LAYOUT"
+}
+setup_locale
+
+### Setup boot-loader ###
+#########################
+
+setup_bootloader() {
+	# Get PARTUUID of the root partition
+	root_uuid="$(lsblk --noheadings --raw --output MOUNTPOINT,PARTUUID | grep "^/\s" | cut -d ' ' -f 2)"
+
+	bootctl install --path="/boot"
+
+	loader_conf="\
+	default	arch
+	timeout	0
+	editor	no
+	"
+
+	[[ $INCLUDE_UCODE ]] && initrd_ucode="\ninitrd\t/intel-ucode.img"
+
+	arch_conf="\
+	title	Arch Linux
+	linux	/vmlinuz-linux
+	initrd	/initramfs-linux.img$initrd_ucode
+	options	root=PARTUUID=$root_uuid ${KERNEL_PARAMS[@]} 
+	"
+
+	echo -e "$loader_conf" > "/boot/loader/loader.conf"
+	echo -e "$arch_conf" > "/boot/loader/entries/arch.conf"
+
+	bootctl update
+}
+setup_bootloader
+
+### Run main installer ###
+##########################
+
+get_file "bassal_main.sh"
+bassal_script=${__}
+/bin/bash "$bassal_script"
