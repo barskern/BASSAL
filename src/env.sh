@@ -82,7 +82,7 @@ dialog_message() {
 get_file() {
 	local name=$1
 	new_name="$(mktemp)"
-	([[ ! -f "$new_name" ]] || [[ ! -f "$name" ]]) && exit 1
+	([[ ! -f "$new_name" ]] && [[ ! -f "$name" ]]) && exit 1
 	
 	if [[ ! -f $name ]]; then
 		curl -o "$new_name" "$BASE_URL$name"

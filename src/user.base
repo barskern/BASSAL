@@ -65,10 +65,3 @@ echo -e "
 [include]
 	path = $HOME/.gitaliases
 " >> $HOME/.gitconfig
-
-### Startup systemd-scripts ###
-###############################
-
-systemctl --user enable mpd
-systemctl --user enable pulseaudio
-systemctl --user enable compton

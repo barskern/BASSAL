@@ -123,6 +123,6 @@ dialog --no-cancel --title "Specify hostname" --inputbox "" 8 60 2>/mnt/etc/host
 
 get_file "bassal_chroot.sh" 
 chroot_script=${__}
-
+mv "$chroot_script" "/mnt/$chroot_script"
 arch-chroot /mnt bash "$chroot_script"
 

@@ -82,7 +82,7 @@ dialog_message() {
 get_file() {
 	local name=$1
 	new_name="$(mktemp)"
-	([[ ! -f "$new_name" ]] || [[ ! -f "$name" ]]) && exit 1
+	([[ ! -f "$new_name" ]] && [[ ! -f "$name" ]]) && exit 1
 	
 	if [[ ! -f $name ]]; then
 		curl -o "$new_name" "$BASE_URL$name"
@@ -137,33 +137,6 @@ map_with_status() {
 
 # vi:syntax=sh
 set -e
-
-### Configure locales ###
-#########################
-
-setup_locale() {
-	timedatectl set-ntp true
-
-	log "Setting timezone to $TZ"
-	ln -sf "/etc/usr/share/zoneinfo/$TZ" /etc/localtime
-	timedatectl set-timezone "$TZ"
-
-	log "Resetting previously set locale in /etc/locale.gen"
-	sed -i "s/\(^[^#]\)/#\1/" /etc/locale.gen
-
-	log "Generating the following locales: (${EXTRA_LOCALES[@]})"
-	for gen_local in ${EXTRA_LOCALES[@]}; do
-		sed -i "s/^#${gen_local}/${gen_local}/" /etc/locale.gen
-	done
-	locale-gen
-
-	log "Set main locale to be $LOCALE"
-	localectl set-locale "LANG=$LOCALE"
-
-	log "Set keyboard type to be $KB_LAYOUT $KB_MODEL $KB_VARIANT"
-	localectl set-x11-keymap "$KB_LAYOUT" "$KB_MODEL" "$KB_VARIANT" || localectl set-keymap "$KB_LAYOUT"
-}
-setup_locale
 
 ### Setup boot-loader ###
 #########################

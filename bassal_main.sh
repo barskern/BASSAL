@@ -82,7 +82,7 @@ dialog_message() {
 get_file() {
 	local name=$1
 	new_name="$(mktemp)"
-	([[ ! -f "$new_name" ]] || [[ ! -f "$name" ]]) && exit 1
+	([[ ! -f "$new_name" ]] && [[ ! -f "$name" ]]) && exit 1
 	
 	if [[ ! -f $name ]]; then
 		curl -o "$new_name" "$BASE_URL$name"
@@ -156,7 +156,7 @@ dialog_message \
 install_pkgs() {
 	install_pkg() {
 		local pkgname=$1
-		#pacman --sync --quiet --noconfirm --needed --noprogressbar "$pkgname"
+		pacman --sync --quiet --noconfirm --needed --noprogressbar "$pkgname"
 	}
 
 
@@ -172,11 +172,11 @@ install_pkgs
 ### Configure systemd units ###
 ###############################
 
-get_file "systemd-units/i3-session.service"
+get_file "data/systemd-units/i3-session.service"
 mv "${__}" "/etc/systemd/user/i3.service"
-get_file "systemd-units/i3-session.target"
+get_file "data/systemd-units/i3-session.target"
 mv "${__}" "/etc/systemd/user/i3.target"
-get_file "systemd-units/compton.service"
+get_file "data/systemd-units/compton.service"
 mv "${__}" "/etc/systemd/user/compton.service"
 
 # Download file which launches the X-server with systemd
@@ -251,14 +251,12 @@ rm "$tmp_username"
 # Download and run user configuration as newly created user
 get_file "bassal_user.sh"
 user_script=${__}
-#su --command "$user_script" --shell /bin/bash "$username"
+su --command "$user_script" --shell /bin/bash "$username"
 
 ### Configure lightdm ###
 #########################
 # PS! Has to be done after user setup because lightdm-mini-greeter
 # is installed from the AUR, hence cannot be installed as root
-
-systemctl enable lightdm
 
 sed -i -e "s/^#\?greeter-session=.*$/greeter-session=lightdm-mini-greeter/" /etc/lightdm/lightdm.conf
 
