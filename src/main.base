@@ -106,7 +106,7 @@ dialog --title "Specify hostname" \
 	--inputbox "" \
 	8 60 \
 	1>&3 \
-	2>/mnt/etc/hostname \
+	2>/etc/hostname \
 || exit
 
 # Ask for username
