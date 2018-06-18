@@ -27,3 +27,10 @@ setup_locale() {
 	localectl set-x11-keymap "$KB_LAYOUT" "$KB_MODEL" "$KB_VARIANT" || localectl set-keymap "$KB_LAYOUT"
 }
 setup_locale
+
+### Enable systemd-units ###
+############################
+
+systemctl enable systemd-networkd
+systemctl enable systemd-resolved
+systemctl enable lightdm

@@ -3,13 +3,15 @@
 ### Setup constants ###
 #######################
 
-LOG=${LOG:-"/dev/tty6"}
+LOG=${LOG:-"log.txt"}
 BASE_URL=${BASE_URL:-"https://raw.githubusercontent.com/barskern/BASSAL/master/"}
 
 # Setup logging so that commands will default to writing to the
 # logfile, and only commands that use 'log_stdout' will write
 # to the STDOUT
-exec &3>1 1>>${LOG} 2>&1
+exec 3>&1
+exec 1>>${LOG}
+exec 2>&1
 
 # Setup locale and keyboard
 TZ="Europe/Oslo"
@@ -36,6 +38,13 @@ INCLUDE_UCODE="$(lscpu | grep "Model name" | grep -i "intel")"
 BASE_PKGS=("base" "base-devel")
 [[ $INCLUDE_UCODE ]] && BASE_PKGS+=("intel-ucode")
 
+# Variables for homesick initialization
+HOMESICK_CASTLE="dotfiles"
+GITHUB_USER="barskern"
+
+# Kernel parameters
+KERNEL_PARAMS=(rw quiet)
+
 ### Setup functions ###
 #######################
 
@@ -52,21 +61,16 @@ log_stdout() {
 # Display an error message with dialog
 dialog_error() {
 	local msg=$1
-	dialog --colors --title "\Zb\Z1\Zr Error \Zn" --msgbox "$msg" 0 60
+	dialog_message "\Zb\Z1\Zr Error " "$msg" 
 }
 
-# Display a warning message with dialog and give the user the opportunity to cancel
+# Display a warning message with dialog
 dialog_warning() {
 	local msg=$1
-	dialog --colors \
-		--defaultno \
-		--title "\Zb\Z3\Zr WARNING!! " \
-		--yesno "$msg" \
-		0 60 \
-	|| exit
+	dialog_message "\Zb\Z3\Zr WARNING!! " "$msg"
 }
 
-# Display a message with dialog and give the user the opportunity to cancel
+# Display a message with dialog
 dialog_message() {
 	local title=$1
 	local msg=$2
@@ -74,6 +78,7 @@ dialog_message() {
 		--title "$title" \
 		--msgbox "\n$msg" \
 		10 60 \
+		1>&3 \
 	|| exit
 }
 
@@ -106,6 +111,7 @@ map_with_status() {
 	items_status=()
 	len=${#items[@]}
 	n=30 # Must be a multiple of 2
+
 	# Run mapper on each item and display status in a mixedgauge window
 	for ((i=0; i<$len; i++)) do
 		read item <<< "${items[$i]}" 
@@ -117,20 +123,27 @@ map_with_status() {
 		else 
 			s=$(($ii - $n + 2))
 		fi
+
 		items_display="${items_status[@]:$s:$n}"
 		dialog --title "$title" \
-			--mixedgauge "" 0 60 \
+			--mixedgauge "" \
+			30 60 \
 			$((100 * $i / $len)) \
-			${items_display[@]}
+			${items_display[@]} \
+			1>&3
+
 		$mapper "$item"
-		status="$?"
-		items_status[$(($ii + 1))]="$status"
+		items_status[$(($ii + 1))]="$?"
 	done
+
 	items_display="${items_status[@]:$s:$n}"
 	dialog --title "$title" \
-		--mixedgauge "" 0 60 \
+		--mixedgauge "" \
+		30 60 \
 		100 \
-		${items_display[@]}
+		${items_display[@]} \
+		1>&3
+
 	set +e
 	sleep 0.5
 }
@@ -140,11 +153,11 @@ set -e
 
 # Check that dialog is installed
 pacman --sync --noconfirm --needed dialog \
-|| { echo "Error at start of script. Are you sure youre running this script as root? Are you sure you have an internet connection?"; exit 1; }
+|| { log_stdout "Error at start of script. Are you sure youre running this script as root? Are you sure you have an internet connection?"; exit 1; }
 
 # Check that the current system supports UEFI
 [[ ! -d "/sys/firmware/efi" ]] \
-&& { echo "You have to be booted with EFI to use this script. Install a minimal ArchLinux installation and run \"bassal.sh\" to use my custom configurations."; exit 1; }
+&& { log_stdout "You have to be booted with EFI to use this script. Install a minimal ArchLinux installation and run \"bassal.sh\" to use my custom configurations."; exit 1; }
 
 ### Welcome message ###
 #######################
@@ -163,6 +176,7 @@ dialog \
 	
 	If you're not looking for the full package, use \"bassal.sh\" instead which only installs and configures custom settings" \
 	0 60 \
+	1>&3 \
 || exit
 
 ### Actions done pre-chroot ###
@@ -185,7 +199,8 @@ selected_disk=$(dialog \
 	- Home partition (Remaining space)
        	- Swap partition (8GB)" \
 	0 60 0 \
-	$possible_disks)
+	$possible_disks \
+	1>&3)
 
 is_mounted=$(lsblk --raw --paths --noheadings --output MOUNTPOINT "$selected_disk")
 [[ ! -z $is_mounted ]] && { dialog_error "$selected_disk is already mounted. Please unmount it before trying to partition it"; exit 1; }
@@ -252,14 +267,11 @@ pacstrap /mnt ${BASE_PKGS[@]}
 # Generate fstab
 genfstab -U /mnt >>/mnt/etc/fstab
 
-# Ask for hostname
-dialog --no-cancel --title "Specify hostname" --inputbox "" 8 60 2>/mnt/etc/hostname
-
 ### Run a script as chroot in the newly made installation ###
 #############################################################
 
-get_file "bassal_chroot.sh" 
-chroot_script=${__}
-mv "$chroot_script" "/mnt/$chroot_script"
-arch-chroot /mnt bash "$chroot_script"
+get_file "dist/bassal_chroot.sh" 
+mv "$__" "/mnt/$__"
+arch-chroot /mnt bash "$__"
+rm "/mnt/$__"
 

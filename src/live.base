@@ -3,11 +3,11 @@ set -e
 
 # Check that dialog is installed
 pacman --sync --noconfirm --needed dialog \
-|| { echo "Error at start of script. Are you sure youre running this script as root? Are you sure you have an internet connection?"; exit 1; }
+|| { log_stdout "Error at start of script. Are you sure youre running this script as root? Are you sure you have an internet connection?"; exit 1; }
 
 # Check that the current system supports UEFI
 [[ ! -d "/sys/firmware/efi" ]] \
-&& { echo "You have to be booted with EFI to use this script. Install a minimal ArchLinux installation and run \"bassal.sh\" to use my custom configurations."; exit 1; }
+&& { log_stdout "You have to be booted with EFI to use this script. Install a minimal ArchLinux installation and run \"bassal.sh\" to use my custom configurations."; exit 1; }
 
 ### Welcome message ###
 #######################
@@ -26,6 +26,7 @@ dialog \
 	
 	If you're not looking for the full package, use \"bassal.sh\" instead which only installs and configures custom settings" \
 	0 60 \
+	1>&3 \
 || exit
 
 ### Actions done pre-chroot ###
@@ -48,7 +49,8 @@ selected_disk=$(dialog \
 	- Home partition (Remaining space)
        	- Swap partition (8GB)" \
 	0 60 0 \
-	$possible_disks)
+	$possible_disks \
+	1>&3)
 
 is_mounted=$(lsblk --raw --paths --noheadings --output MOUNTPOINT "$selected_disk")
 [[ ! -z $is_mounted ]] && { dialog_error "$selected_disk is already mounted. Please unmount it before trying to partition it"; exit 1; }
@@ -115,14 +117,11 @@ pacstrap /mnt ${BASE_PKGS[@]}
 # Generate fstab
 genfstab -U /mnt >>/mnt/etc/fstab
 
-# Ask for hostname
-dialog --no-cancel --title "Specify hostname" --inputbox "" 8 60 2>/mnt/etc/hostname
-
 ### Run a script as chroot in the newly made installation ###
 #############################################################
 
-get_file "bassal_chroot.sh" 
-chroot_script=${__}
-mv "$chroot_script" "/mnt/$chroot_script"
-arch-chroot /mnt bash "$chroot_script"
+get_file "dist/bassal_chroot.sh" 
+mv "$__" "/mnt/$__"
+arch-chroot /mnt bash "$__"
+rm "/mnt/$__"
 

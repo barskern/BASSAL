@@ -27,9 +27,8 @@ install_aur_pkgs() {
 	}
 
 	get_file "data/packages_aur.csv"
-	pkgs_aur_file=${__}
-
-	readarray pkgs_aur <<< "$(cat "$pkgs_aur_file" | cut -d ',' -f 1)"
+	readarray pkgs_aur <<< "$(cat "$__" | cut -d ',' -f 1)"
+	rm "$__"
 
 	map_with_status "Building and installing packages from AUR" install_aur_pkg pkgs_aur[@]
 }

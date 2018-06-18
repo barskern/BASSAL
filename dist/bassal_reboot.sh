@@ -3,13 +3,15 @@
 ### Setup constants ###
 #######################
 
-LOG=${LOG:-"/dev/tty6"}
+LOG=${LOG:-"log.txt"}
 BASE_URL=${BASE_URL:-"https://raw.githubusercontent.com/barskern/BASSAL/master/"}
 
 # Setup logging so that commands will default to writing to the
 # logfile, and only commands that use 'log_stdout' will write
 # to the STDOUT
-exec &3>1 1>>${LOG} 2>&1
+exec 3>&1
+exec 1>>${LOG}
+exec 2>&1
 
 # Setup locale and keyboard
 TZ="Europe/Oslo"
@@ -36,6 +38,13 @@ INCLUDE_UCODE="$(lscpu | grep "Model name" | grep -i "intel")"
 BASE_PKGS=("base" "base-devel")
 [[ $INCLUDE_UCODE ]] && BASE_PKGS+=("intel-ucode")
 
+# Variables for homesick initialization
+HOMESICK_CASTLE="dotfiles"
+GITHUB_USER="barskern"
+
+# Kernel parameters
+KERNEL_PARAMS=(rw quiet)
+
 ### Setup functions ###
 #######################
 
@@ -52,21 +61,16 @@ log_stdout() {
 # Display an error message with dialog
 dialog_error() {
 	local msg=$1
-	dialog --colors --title "\Zb\Z1\Zr Error \Zn" --msgbox "$msg" 0 60
+	dialog_message "\Zb\Z1\Zr Error " "$msg" 
 }
 
-# Display a warning message with dialog and give the user the opportunity to cancel
+# Display a warning message with dialog
 dialog_warning() {
 	local msg=$1
-	dialog --colors \
-		--defaultno \
-		--title "\Zb\Z3\Zr WARNING!! " \
-		--yesno "$msg" \
-		0 60 \
-	|| exit
+	dialog_message "\Zb\Z3\Zr WARNING!! " "$msg"
 }
 
-# Display a message with dialog and give the user the opportunity to cancel
+# Display a message with dialog
 dialog_message() {
 	local title=$1
 	local msg=$2
@@ -74,6 +78,7 @@ dialog_message() {
 		--title "$title" \
 		--msgbox "\n$msg" \
 		10 60 \
+		1>&3 \
 	|| exit
 }
 
@@ -106,6 +111,7 @@ map_with_status() {
 	items_status=()
 	len=${#items[@]}
 	n=30 # Must be a multiple of 2
+
 	# Run mapper on each item and display status in a mixedgauge window
 	for ((i=0; i<$len; i++)) do
 		read item <<< "${items[$i]}" 
@@ -117,20 +123,27 @@ map_with_status() {
 		else 
 			s=$(($ii - $n + 2))
 		fi
+
 		items_display="${items_status[@]:$s:$n}"
 		dialog --title "$title" \
-			--mixedgauge "" 0 60 \
+			--mixedgauge "" \
+			30 60 \
 			$((100 * $i / $len)) \
-			${items_display[@]}
+			${items_display[@]} \
+			1>&3
+
 		$mapper "$item"
-		status="$?"
-		items_status[$(($ii + 1))]="$status"
+		items_status[$(($ii + 1))]="$?"
 	done
+
 	items_display="${items_status[@]:$s:$n}"
 	dialog --title "$title" \
-		--mixedgauge "" 0 60 \
+		--mixedgauge "" \
+		30 60 \
 		100 \
-		${items_display[@]}
+		${items_display[@]} \
+		1>&3
+
 	set +e
 	sleep 0.5
 }
@@ -138,67 +151,36 @@ map_with_status() {
 # vi:syntax=sh
 set -e
 
-### Install packages from AUR ###
-#################################
+### Configure locales ###
+#########################
 
-install_aur_pkgs() {
-	command -v packer || {
-		tmp_dir=$(mktemp -d)
-		git clone -q https://aur.archlinux.org/packer.git $tmp_dir
-		cd "$tmp_dir"
-		makepkg --clean \
-			--install \
-			--rmdeps \
-			--syncdeps \
-			--needed \
-			--noconfirm \
-			--noprogressbar
-		cd -
-	}
+setup_locale() {
+	timedatectl set-ntp true
 
-	command -v packer || { dialog_error "Packer did not install successfully, please install it manually and then rerun script"; exit 1; }
+	log "Setting timezone to $TZ"
+	ln -sf "/etc/usr/share/zoneinfo/$TZ" /etc/localtime
+	timedatectl set-timezone "$TZ"
 
-	install_aur_pkg() {
-		local pkg=$1
-		packer -S --noconfirm --noedit "$pkg"
-	}
+	log "Resetting previously set locale in /etc/locale.gen"
+	sed -i "s/\(^[^#]\)/#\1/" /etc/locale.gen
 
-	get_file "data/packages_aur.csv"
-	pkgs_aur_file=${__}
+	log "Generating the following locales: (${EXTRA_LOCALES[@]})"
+	for gen_local in ${EXTRA_LOCALES[@]}; do
+		sed -i "s/^#${gen_local}/${gen_local}/" /etc/locale.gen
+	done
+	locale-gen
 
-	readarray pkgs_aur <<< "$(cat "$pkgs_aur_file" | cut -d ',' -f 1)"
+	log "Set main locale to be $LOCALE"
+	localectl set-locale "LANG=$LOCALE"
 
-	map_with_status "Building and installing packages from AUR" install_aur_pkg pkgs_aur[@]
+	log "Set keyboard type to be $KB_LAYOUT $KB_MODEL $KB_VARIANT"
+	localectl set-x11-keymap "$KB_LAYOUT" "$KB_MODEL" "$KB_VARIANT" || localectl set-keymap "$KB_LAYOUT"
 }
-install_aur_pkgs
+setup_locale
 
-### Download dotfiles with homesick ###
-#######################################
+### Enable systemd-units ###
+############################
 
-setup_dotfiles() {
-	# Make sure that ruby is installed
-	[[ -z "$(pacman -Q ruby)" ]] && { display_error "Ruby has to be installed to run this script"; exit 1; }
-
-	log "Installing homesick with gem..."
-	gem install homesick --no-document
-
-	homesick_cmd="$(ruby -e 'print Gem.user_dir')/bin/homesick"
-
-	log "Cloning and linking castle $HOMESICK_CASTLE from $GITHUB_USER's github user..."
-	$homesick_cmd clone "$GITHUB_USER/$HOMESICK_CASTLE"
-	$homesick_cmd link "$HOMESICK_CASTLE"
-}
-setup_dotfiles
-
-### Configure user-environement ###
-###################################
-
-log "Downloading and installing antigen.."
-mkdir -p $HOME/.config
-curl -F git.io/antigen > $HOME/.config/antigen.zsh
-
-log "Adding .gitaliases to .gitconfig"
-echo -e "
-[include]
-	path = $HOME/.gitaliases
-" >> $HOME/.gitconfig
+systemctl enable systemd-networkd
+systemctl enable systemd-resolved
+systemctl enable lightdm

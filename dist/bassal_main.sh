@@ -3,13 +3,15 @@
 ### Setup constants ###
 #######################
 
-LOG=${LOG:-"/dev/tty6"}
+LOG=${LOG:-"log.txt"}
 BASE_URL=${BASE_URL:-"https://raw.githubusercontent.com/barskern/BASSAL/master/"}
 
 # Setup logging so that commands will default to writing to the
 # logfile, and only commands that use 'log_stdout' will write
 # to the STDOUT
-exec &3>1 1>>${LOG} 2>&1
+exec 3>&1
+exec 1>>${LOG}
+exec 2>&1
 
 # Setup locale and keyboard
 TZ="Europe/Oslo"
@@ -36,6 +38,13 @@ INCLUDE_UCODE="$(lscpu | grep "Model name" | grep -i "intel")"
 BASE_PKGS=("base" "base-devel")
 [[ $INCLUDE_UCODE ]] && BASE_PKGS+=("intel-ucode")
 
+# Variables for homesick initialization
+HOMESICK_CASTLE="dotfiles"
+GITHUB_USER="barskern"
+
+# Kernel parameters
+KERNEL_PARAMS=(rw quiet)
+
 ### Setup functions ###
 #######################
 
@@ -52,21 +61,16 @@ log_stdout() {
 # Display an error message with dialog
 dialog_error() {
 	local msg=$1
-	dialog --colors --title "\Zb\Z1\Zr Error \Zn" --msgbox "$msg" 0 60
+	dialog_message "\Zb\Z1\Zr Error " "$msg" 
 }
 
-# Display a warning message with dialog and give the user the opportunity to cancel
+# Display a warning message with dialog
 dialog_warning() {
 	local msg=$1
-	dialog --colors \
-		--defaultno \
-		--title "\Zb\Z3\Zr WARNING!! " \
-		--yesno "$msg" \
-		0 60 \
-	|| exit
+	dialog_message "\Zb\Z3\Zr WARNING!! " "$msg"
 }
 
-# Display a message with dialog and give the user the opportunity to cancel
+# Display a message with dialog
 dialog_message() {
 	local title=$1
 	local msg=$2
@@ -74,6 +78,7 @@ dialog_message() {
 		--title "$title" \
 		--msgbox "\n$msg" \
 		10 60 \
+		1>&3 \
 	|| exit
 }
 
@@ -106,6 +111,7 @@ map_with_status() {
 	items_status=()
 	len=${#items[@]}
 	n=30 # Must be a multiple of 2
+
 	# Run mapper on each item and display status in a mixedgauge window
 	for ((i=0; i<$len; i++)) do
 		read item <<< "${items[$i]}" 
@@ -117,20 +123,27 @@ map_with_status() {
 		else 
 			s=$(($ii - $n + 2))
 		fi
+
 		items_display="${items_status[@]:$s:$n}"
 		dialog --title "$title" \
-			--mixedgauge "" 0 60 \
+			--mixedgauge "" \
+			30 60 \
 			$((100 * $i / $len)) \
-			${items_display[@]}
+			${items_display[@]} \
+			1>&3
+
 		$mapper "$item"
-		status="$?"
-		items_status[$(($ii + 1))]="$status"
+		items_status[$(($ii + 1))]="$?"
 	done
+
 	items_display="${items_status[@]:$s:$n}"
 	dialog --title "$title" \
-		--mixedgauge "" 0 60 \
+		--mixedgauge "" \
+		30 60 \
 		100 \
-		${items_display[@]}
+		${items_display[@]} \
+		1>&3
+
 	set +e
 	sleep 0.5
 }
@@ -140,7 +153,7 @@ set -e
 
 # Verify that "dialog" is installed
 pacman --sync --noconfirm --needed dialog \
-|| { echo "Error at start of script. Are you sure youre running this script as root?\
+|| { log_stdout "Error at start of script. Are you sure youre running this script as root?\
 Are you sure you have an internet connection?"; exit 1; }
 
 ### Start the actual script with a welcome  ###
@@ -159,11 +172,9 @@ install_pkgs() {
 		pacman --sync --quiet --noconfirm --needed --noprogressbar "$pkgname"
 	}
 
-
 	get_file "data/packages.csv"
-	pkgs_file=${__}
-
-	readarray pkgs <<< "$(cat "$pkgs_file" | cut -d ',' -f 1)"
+	readarray pkgs <<< "$(cat "$__" | cut -d ',' -f 1)"
+	rm "$__"
 
 	map_with_status "Installing packages" install_pkg pkgs[@]
 }
@@ -173,15 +184,17 @@ install_pkgs
 ###############################
 
 get_file "data/systemd-units/i3-session.service"
-mv "${__}" "/etc/systemd/user/i3.service"
+cat "${__}" >"/etc/systemd/user/i3.service"
+
 get_file "data/systemd-units/i3-session.target"
-mv "${__}" "/etc/systemd/user/i3.target"
+cat "${__}" >"/etc/systemd/user/i3.target"
+
 get_file "data/systemd-units/compton.service"
-mv "${__}" "/etc/systemd/user/compton.service"
+cat "${__}" >"/etc/systemd/user/compton.service"
 
 # Download file which launches the X-server with systemd
 get_file "data/i3-sd.desktop"
-mv "${__}" "/usr/share/xsessions/i3-sd.desktop"
+cat "${__}" >"/usr/share/xsessions/i3-sd.desktop"
 
 ### Setup user environment ###
 ##############################
@@ -208,6 +221,7 @@ setup_user() {
 			--title "Enter password" \
 			--passwordbox "$prompt" \
 			0 60 \
+			1>&3 \
 			2> $tmp_pass1 \
 		|| exit
 
@@ -218,6 +232,7 @@ setup_user() {
 			--title "Repeat your password" \
 			--passwordbox "" \
 			0 60 \
+			1>&3 \
 			2> $tmp_pass2 \
 		|| exit
 
@@ -235,11 +250,22 @@ setup_user() {
 
 	useradd --create-home --gid wheel --password "$pass" "$username"
 }
+
+# Ask for hostname
+dialog --title "Specify hostname" \
+	--inputbox "" \
+	8 60 \
+	1>&3 \
+	2>/mnt/etc/hostname \
+|| exit
+
 # Ask for username
 tmp_username=$(mktemp)
-dialog --no-cancel \
-	--title "Specify username" \
-	--inputbox "\nThis can either be the username of an existing user or a brand new username." 10 60 2> $tmp_username \
+dialog --title "Specify username" \
+	--inputbox "\nThis can either be the username of an existing user or a brand new username." \
+	10 60 \
+	1>&3 \
+	2> $tmp_username \
 || exit
 username=$(cat "$tmp_username")
 rm "$tmp_username"
@@ -249,9 +275,9 @@ rm "$tmp_username"
 || setup_user "$username"
 
 # Download and run user configuration as newly created user
-get_file "bassal_user.sh"
-user_script=${__}
-su --command "$user_script" --shell /bin/bash "$username"
+get_file "dist/bassal_user.sh"
+sudo --user="$username" "bash $__"
+rm "$__"
 
 ### Configure lightdm ###
 #########################

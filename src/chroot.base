@@ -6,7 +6,8 @@ set -e
 
 setup_bootloader() {
 	# Get PARTUUID of the root partition
-	root_uuid="$(lsblk --noheadings --raw --output MOUNTPOINT,PARTUUID | grep "^/\s" | cut -d ' ' -f 2)"
+	dev_path="$(lsblk --noheadings --path --raw --output MOUNTPOINT,NAME | grep "^/\s" | cut -d ' ' -f 2)"
+	root_uuid="$(blkid | grep "$dev_path" | sed 's/.*PARTUUID="//' | tr -d \")"	
 
 	bootctl install --path="/boot"
 
@@ -35,6 +36,6 @@ setup_bootloader
 ### Run main installer ###
 ##########################
 
-get_file "bassal_main.sh"
-bassal_script=${__}
-/bin/bash "$bassal_script"
+get_file "dist/bassal_main.sh"
+bash "$__"
+rm "$__"
