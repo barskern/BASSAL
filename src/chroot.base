@@ -10,20 +10,20 @@ setup_bootloader() {
 
 	bootctl install --path="/boot"
 
-	loader_conf="\
-	default	arch
-	timeout	0
-	editor	no
-	"
+loader_conf="\
+default	arch
+timeout	0
+editor	no
+"
 
 	[[ $INCLUDE_UCODE ]] && initrd_ucode="\ninitrd\t/intel-ucode.img"
 
-	arch_conf="\
-	title	Arch Linux
-	linux	/vmlinuz-linux
-	initrd	/initramfs-linux.img$initrd_ucode
-	options	root=PARTUUID=$root_uuid ${KERNEL_PARAMS[@]} 
-	"
+arch_conf="\
+title	Arch Linux
+linux	/vmlinuz-linux
+initrd	/initramfs-linux.img$initrd_ucode
+options	root=PARTUUID=$root_uuid ${KERNEL_PARAMS[@]} 
+"
 
 	echo -e "$loader_conf" > "/boot/loader/loader.conf"
 	echo -e "$arch_conf" > "/boot/loader/entries/arch.conf"
