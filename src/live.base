@@ -122,6 +122,6 @@ genfstab -U /mnt >>/mnt/etc/fstab
 
 get_file "dist/bassal_chroot.sh" 
 mv "$__" "/mnt/$__"
-arch-chroot /mnt bash "$__"
+arch-chroot /mnt bash "$__" 1>&3
 rm "/mnt/$__"
 

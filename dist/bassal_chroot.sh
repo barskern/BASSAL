@@ -87,7 +87,7 @@ dialog_message() {
 get_file() {
 	local name=$1
 	new_name="$(mktemp)"
-	([[ ! -f "$new_name" ]] && [[ ! -f "$name" ]]) && exit 1
+	([[ ! -f "$new_name" ]] && [[ ! -f "$name" ]]) && { display_error "Unable to find temporary files"; exit 1; }
 	
 	if [[ ! -f $name ]]; then
 		curl -o "$new_name" "$BASE_URL$name"
@@ -110,7 +110,7 @@ map_with_status() {
 	set +e 
 	items_status=()
 	len=${#items[@]}
-	n=30 # Must be a multiple of 2
+	n=38 # Must be a multiple of 2
 
 	# Run mapper on each item and display status in a mixedgauge window
 	for ((i=0; i<$len; i++)) do
@@ -187,5 +187,5 @@ setup_bootloader
 ##########################
 
 get_file "dist/bassal_main.sh"
-bash "$__"
+bash "$__" 1>&3
 rm "$__"

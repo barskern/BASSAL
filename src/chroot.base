@@ -37,5 +37,5 @@ setup_bootloader
 ##########################
 
 get_file "dist/bassal_main.sh"
-bash "$__"
+bash "$__" 1>&3
 rm "$__"

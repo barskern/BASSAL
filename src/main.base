@@ -126,7 +126,7 @@ rm "$tmp_username"
 
 # Download and run user configuration as newly created user
 get_file "dist/bassal_user.sh"
-sudo --user="$username" "bash $__"
+sudo --user="$username" "bash $__" 1>&3
 rm "$__"
 
 ### Configure lightdm ###
