@@ -184,10 +184,10 @@ install_pkgs
 ###############################
 
 get_file "data/systemd-units/i3-session.service"
-cat "${__}" >"/etc/systemd/user/i3.service"
+cat "${__}" >"/etc/systemd/user/i3-session.service"
 
 get_file "data/systemd-units/i3-session.target"
-cat "${__}" >"/etc/systemd/user/i3.target"
+cat "${__}" >"/etc/systemd/user/i3-session.target"
 
 get_file "data/systemd-units/compton.service"
 cat "${__}" >"/etc/systemd/user/compton.service"
@@ -248,7 +248,8 @@ setup_user() {
 	do :; done
 	rm "$tmp_pass1" "$tmp_pass2"
 
-	useradd --create-home --gid wheel --password "$pass" "$username"
+	useradd --create-home --gid wheel "$username"
+	echo "$username:$pass" | chpasswd
 }
 
 # Ask for hostname
