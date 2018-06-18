@@ -1,0 +1,7 @@
+[Unit]
+Description=i3 window manager
+PartOf=i3-session.target
+
+[Service]
+ExecStart=/usr/bin/i3
+Restart=on-failure

@@ -153,18 +153,35 @@ dialog_message \
 ### Install packages from packages.csv ###
 ##########################################
 
-install_pkg() {
-	local pkgname=$1
-	pacman --sync --quiet --noconfirm --needed --noprogressbar "$pkgname"
+install_pkgs() {
+	install_pkg() {
+		local pkgname=$1
+		#pacman --sync --quiet --noconfirm --needed --noprogressbar "$pkgname"
+	}
+
+
+	get_file "data/packages.csv"
+	pkgs_file=${__}
+
+	readarray pkgs <<< "$(cat "$pkgs_file" | cut -d ',' -f 1)"
+
+	map_with_status "Installing packages" install_pkg pkgs[@]
 }
+install_pkgs
 
+### Configure systemd units ###
+###############################
 
-get_file "packages.csv"
-pkgs_file=${__}
+get_file "systemd-units/i3-session.service"
+mv "${__}" "/etc/systemd/user/i3.service"
+get_file "systemd-units/i3-session.target"
+mv "${__}" "/etc/systemd/user/i3.target"
+get_file "systemd-units/compton.service"
+mv "${__}" "/etc/systemd/user/compton.service"
 
-readarray pkgs <<< "$(cat "$pkgs_file" | cut -d ',' -f 1)"
-
-#map_with_status "Installing packages" install_pkg pkgs[@]
+# Download file which launches the X-server with systemd
+get_file "data/i3-sd.desktop"
+mv "${__}" "/usr/share/xsessions/i3-sd.desktop"
 
 ### Setup user environment ###
 ##############################
@@ -178,7 +195,9 @@ setup_user() {
 	error_msg="\Zb\Z1\Zr Error: Passwords not matching \Zn"
 	prompt="Nothing will be displayed while you type"
 
-	dialog_message "Setup account for $username" "Since $username does not already exist, the following prompts will set a password for this user and initialize the user with a home directory"
+	dialog_message \
+		"Setup account for $username" \
+		"Since $username does not already exist, the following prompts will set a password for this user and initialize the user with a home directory"
 
 	# Creates a do-while loop which askes for passwords until two
 	# equal passwords are entered
@@ -222,7 +241,6 @@ dialog --no-cancel \
 	--title "Specify username" \
 	--inputbox "\nThis can either be the username of an existing user or a brand new username." 10 60 2> $tmp_username \
 || exit
-
 username=$(cat "$tmp_username")
 rm "$tmp_username"
 
@@ -233,4 +251,25 @@ rm "$tmp_username"
 # Download and run user configuration as newly created user
 get_file "bassal_user.sh"
 user_script=${__}
-su --command "$user_script" --shell /bin/bash "$username"
+#su --command "$user_script" --shell /bin/bash "$username"
+
+### Configure lightdm ###
+#########################
+# PS! Has to be done after user setup because lightdm-mini-greeter
+# is installed from the AUR, hence cannot be installed as root
+
+systemctl enable lightdm
+
+sed -i -e "s/^#\?greeter-session=.*$/greeter-session=lightdm-mini-greeter/" /etc/lightdm/lightdm.conf
+
+sed -i -e "s/^user\s=.*$/user = $username/" /etc/lightdm/lightdm-mini-greeter.conf
+
+sed -i -e "s/^window-color\s=.*$/window-color = \"#F1F1F1\"/" /etc/lightdm/lightdm-mini-greeter.conf
+
+sed -i -e "s,^background-image\s=.*$,background-image = \"/usr/share/backgrounds/login-wall.png\"," /etc/lightdm/lightdm-mini-greeter.conf
+
+dialog_message \
+	"Lightdm background" \
+	"Add an image to \"/usr/share/backgrounds/login-wall.png\" to use as a background for the lightdm-mini-greeter"
+
+clear

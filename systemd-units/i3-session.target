@@ -1,0 +1,4 @@
+[Unit]
+Description=i3-session
+BindsTo=i3-session.service
+Wants=graphical-session.target

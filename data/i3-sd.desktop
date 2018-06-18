@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=i3-sd
+Comment=systemd launcher for i3
+Exec=/usr/bin/systemctl start --user --wait i3-session.target
+Type=Application
+X-LightDM-DesktopName=i3-sd
+DesktopNames=i3-sd
+Keywords=tiling;wm;windowmanager;window;manager;

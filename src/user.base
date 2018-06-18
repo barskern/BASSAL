@@ -26,7 +26,7 @@ install_aur_pkgs() {
 		packer -S --noconfirm --noedit "$pkg"
 	}
 
-	get_file "packages_aur.csv"
+	get_file "data/packages_aur.csv"
 	pkgs_aur_file=${__}
 
 	readarray pkgs_aur <<< "$(cat "$pkgs_aur_file" | cut -d ',' -f 1)"
@@ -65,3 +65,10 @@ echo -e "
 [include]
 	path = $HOME/.gitaliases
 " >> $HOME/.gitconfig
+
+### Startup systemd-scripts ###
+###############################
+
+systemctl --user enable mpd
+systemctl --user enable pulseaudio
+systemctl --user enable compton
