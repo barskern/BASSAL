@@ -1,3 +1,4 @@
 i3-gaps,gui,unofficial fork of i3 with additional features,
-polybar,gui,a statusbar for i3,
 lightdm-mini-greeter,gui,a small greeter for lightdm,
+polybar,gui,a statusbar for i3,
+ttf-material-icons,fonts,material icons from Google,
