@@ -1,5 +1,6 @@
 acpi,utils,battery status,
 alsa-utils,utils,utilitis for dealing with sound,
+arandr,gui,utility to control screens,
 archey3,utils,show system stats,
 bind-tools,utils,,
 compton,gui,custom compositor for the X-server,
