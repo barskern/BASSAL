@@ -45,6 +45,9 @@ cat "${__}" >"/etc/systemd/user/compton.service"
 get_file "data/systemd-units/unclutter.service"
 cat "${__}" >"/etc/systemd/user/unclutter.service"
 
+get_file "data/systemd-units/keychain.service"
+cat "${__}" >"/etc/systemd/user/keychain.service"
+
 # Download file which launches the X-server with systemd
 get_file "data/i3-sd.desktop"
 cat "${__}" >"/usr/share/xsessions/i3-sd.desktop"

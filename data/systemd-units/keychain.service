@@ -1,0 +1,9 @@
+[Unit]
+Description=persistent gpg and ssh keychain
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/keychain
+
+[Install]
+WantedBy=graphical-session.target
