@@ -1,3 +1,4 @@
+accountsservice,utils,query user information through dbus,
 acpi,utils,battery status,
 alsa-utils,utils,utilitis for dealing with sound,
 arandr,gui,utility to control screens,
