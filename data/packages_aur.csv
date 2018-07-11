@@ -1,5 +1,6 @@
 i3-gaps,gui,unofficial fork of i3 with additional features,
 lightdm-mini-greeter,gui,a small greeter for lightdm,
 plymouth,gui,splash screen on boot,
+plymouth-theme-simple-image,gui,theme for plymouth which displays a simple image,
 polybar,gui,a statusbar for i3,
 ttf-material-icons,fonts,material icons from Google,
