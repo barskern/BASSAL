@@ -1,5 +1,6 @@
 accountsservice,utils,query user information through dbus,
 acpi,utils,battery status,
+alacritty,term,a terminal emulator written in Rust,
 alsa-utils,utils,utilitis for dealing with sound,
 arandr,gui,utility to control screens,
 archey3,utils,show system stats,
