@@ -93,14 +93,14 @@ setup_user() {
 		|| exit
 
 		pass2=$(cat "$tmp_pass2")
-		
+
 		# Only add error message to prompt if it is not already added
 		if ([[ ! "$pass" == "$pass2" ]] && [[ $error == 0 ]]); then
 			prompt="$prompt\n\n$error_msg"
 			error=1
-		fi	  
+		fi
 
-		[[ ! "$pass" == "$pass2" ]]	
+		[[ ! "$pass" == "$pass2" ]]
 	do :; done
 	rm "$tmp_pass1" "$tmp_pass2"
 

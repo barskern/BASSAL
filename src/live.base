@@ -18,12 +18,12 @@ dialog \
 	--title "Welcome to the pure setup of BASSEL" \
 	--yesno "
 	This pure setup will do \Z3EVERYTHING\Zn:
-	
+
 	- Partitioning
 	- Mounting
 	- Installing
 	- Configuring
-	
+
 	If you're not looking for the full package, use \"bassal.sh\" instead which only installs and configures custom settings" \
 	20 60 \
 	1>&3 \
@@ -43,7 +43,7 @@ selected_disk=$(dialog \
 	--title "Select disk to partition" \
 	--menu "
 	Select a disk to partition with the following partitions:
-       
+
 	- EFI-System partition (512MB)
        	- Root partition (32GB)
 	- Home partition (Remaining space)
@@ -102,9 +102,9 @@ log "Mounting partitons..."
 swapon "$swap_part"
 mount "$root_part" /mnt
 mkdir -p /mnt/home
-mkdir -p /mnt/boot 
-mount "$efi_part" /mnt/boot 
-mount "$home_part" /mnt/home 
+mkdir -p /mnt/boot
+mount "$efi_part" /mnt/boot
+mount "$home_part" /mnt/home
 
 log "Successfully partitionned and mounted $selected_disk\n\n$(lsblk --output NAME,SIZE,MOUNTPOINT $selected_disk)"
 
@@ -113,7 +113,7 @@ log "Successfully partitionned and mounted $selected_disk\n\n$(lsblk --output NA
 
 dialog_message "Installing" "Installing the base pkgs: ${BASE_PKGS[@]}"
 
-pacstrap /mnt ${BASE_PKGS[@]} 
+pacstrap /mnt ${BASE_PKGS[@]}
 
 # Generate fstab
 genfstab -U /mnt >>/mnt/etc/fstab
@@ -121,8 +121,7 @@ genfstab -U /mnt >>/mnt/etc/fstab
 ### Run a script as chroot in the newly made installation ###
 #############################################################
 
-get_file "dist/bassal_chroot.sh" 
+get_file "dist/bassal_chroot.sh"
 cat "$__" >"/mnt/bassal_chroot.sh"
 arch-chroot /mnt bash "bassal_chroot.sh" 1>&3
 rm "/mnt/bassal_chroot.sh"
-
