@@ -23,8 +23,8 @@ setup_locale() {
 	log "Set main locale to be $LOCALE"
 	localectl set-locale "LANG=$LOCALE"
 
-	log "Set keyboard type to be $KB_LAYOUT $KB_MODEL $KB_VARIANT"
-	localectl set-x11-keymap "$KB_LAYOUT" "$KB_MODEL" "$KB_VARIANT" || localectl set-keymap "$KB_LAYOUT"
+	log "Set keyboard type to be $KB_LAYOUT $KB_MODEL $KB_VARIANT $KB_OPTIONS"
+	localectl set-x11-keymap "$KB_LAYOUT" "$KB_MODEL" "$KB_VARIANT" "$KB_OPTIONS" || localectl set-keymap "$KB_LAYOUT"
 }
 setup_locale
 

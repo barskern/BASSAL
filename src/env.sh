@@ -18,8 +18,9 @@ TZ="Europe/Oslo"
 LOCALE="nb_NO.utf-8"
 EXTRA_LOCALES=("nb_NO" "en_US")
 KB_LAYOUT="no"
-KB_MODEL="pc104"
+KB_MODEL="acer_laptop"
 KB_VARIANT="winkeys"
+KB_OPTIONS="caps:escape"
 
 # Partition layout device numbers
 EFI_DEV_NR=1
