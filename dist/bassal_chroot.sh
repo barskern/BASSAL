@@ -18,10 +18,11 @@ TZ="Europe/Oslo"
 LOCALE="nb_NO.utf-8"
 EXTRA_LOCALES=("nb_NO" "en_US")
 KB_LAYOUT="no"
-KB_MODEL="pc104"
+KB_MODEL="acer_laptop"
 KB_VARIANT="winkeys"
+KB_OPTIONS="caps:escape"
 
-# Partition layout device numbers 
+# Partition layout device numbers
 EFI_DEV_NR=1
 ROOT_DEV_NR=2
 HOME_DEV_NR=3
@@ -61,7 +62,7 @@ log_stdout() {
 # Display an error message with dialog
 dialog_error() {
 	local msg=$1
-	dialog_message "\Zb\Z1\Zr Error " "$msg" 
+	dialog_message "\Zb\Z1\Zr Error " "$msg"
 }
 
 # Display a warning message with dialog
@@ -82,45 +83,45 @@ dialog_message() {
 	|| exit
 }
 
-# Get file from git repository and return (in the variable ${__}) 
+# Get file from git repository and return (in the variable ${__})
 # a file path to the downloaded file
 get_file() {
 	local name=$1
 	new_name="$(mktemp)"
 	([[ ! -f "$new_name" ]] && [[ ! -f "$name" ]]) && { display_error "Unable to find temporary files"; exit 1; }
-	
+
 	if [[ ! -f $name ]]; then
 		curl -o "$new_name" "$BASE_URL$name"
-	else 
+	else
 		ln -sf "$(readlink -f "$name")" "$new_name"
 	fi
 	__="$new_name"
 	return 0
 }
 
-# Function which loops over the items and calls the mapper-function on each 
+# Function which loops over the items and calls the mapper-function on each
 # item and records the status of the mapping-command
 map_with_status() {
 	local title=$1
 	local mapper=$2
 	declare -a items=("${!3}")
-	# Because installation of packages can fail, 
+	# Because installation of packages can fail,
 	# turn of termination of script on fail because
 	# we can handle those failures
-	set +e 
+	set +e
 	items_status=()
 	len=${#items[@]}
 	n=38 # Must be a multiple of 2
 
 	# Run mapper on each item and display status in a mixedgauge window
 	for ((i=0; i<$len; i++)) do
-		read item <<< "${items[$i]}" 
+		read item <<< "${items[$i]}"
 		ii=$((2*$i))
 		items_status[$ii]="$item"
 		items_status[$(($ii + 1))]="7"
 		if [[ $ii < $n ]]; then
 			s=0
-		else 
+		else
 			s=$(($ii - $n + 2))
 		fi
 
@@ -147,7 +148,6 @@ map_with_status() {
 	set +e
 	sleep 0.5
 }
-
 # vi:syntax=sh
 set -e
 
@@ -157,7 +157,7 @@ set -e
 setup_bootloader() {
 	# Get PARTUUID of the root partition
 	dev_path="$(lsblk --noheadings --path --raw --output MOUNTPOINT,NAME | grep "^/\s" | cut -d ' ' -f 2)"
-	root_uuid="$(blkid | grep "$dev_path" | sed 's/.*PARTUUID="//' | tr -d \")"	
+	root_uuid="$(blkid | grep "$dev_path" | sed 's/.*PARTUUID="//' | tr -d \")"
 
 	bootctl install --path="/boot"
 
@@ -173,7 +173,7 @@ arch_conf="\
 title	Arch Linux
 linux	/vmlinuz-linux
 initrd	/initramfs-linux.img$initrd_ucode
-options	root=PARTUUID=$root_uuid ${KERNEL_PARAMS[@]} 
+options	root=PARTUUID=$root_uuid ${KERNEL_PARAMS[@]}
 "
 
 	echo -e "$loader_conf" > "/boot/loader/loader.conf"
