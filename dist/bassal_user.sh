@@ -209,8 +209,8 @@ log "Downloading and installing antigen.."
 mkdir -p $HOME/.config
 curl -F git.io/antigen > $HOME/.config/antigen.zsh
 
-log "Adding .gitaliases to .gitconfig"
+log "Adding git aliases to git config"
 echo -e "
 [include]
-	path = $HOME/.gitaliases
-" >> $HOME/.gitconfig
+	path = $HOME/.config/git/aliases
+" >> $HOME/.config/git/config
