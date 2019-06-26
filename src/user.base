@@ -5,9 +5,9 @@ set -e
 #################################
 
 install_aur_pkgs() {
-	command -v packer || {
+	command -v yay || {
 		tmp_dir=$(mktemp -d)
-		git clone -q https://aur.archlinux.org/packer.git $tmp_dir
+		git clone -q https://aur.archlinux.org/yay.git $tmp_dir
 		cd "$tmp_dir"
 		makepkg --clean \
 			--install \
@@ -19,11 +19,11 @@ install_aur_pkgs() {
 		cd -
 	}
 
-	command -v packer || { dialog_error "Packer did not install successfully, please install it manually and then rerun script"; exit 1; }
+	command -v yay || { dialog_error "Packer did not install successfully, please install it manually and then rerun script"; exit 1; }
 
 	install_aur_pkg() {
 		local pkg=$1
-		packer -S --noconfirm --noedit "$pkg"
+		yay -S --noconfirm "$pkg"
 	}
 
 	get_file "data/packages_aur.csv"
@@ -37,18 +37,9 @@ install_aur_pkgs
 ### Download dotfiles with homesick ###
 #######################################
 
+mkdir -p $HOME/.config
 setup_dotfiles() {
-	# Make sure that ruby is installed
-	[[ -z "$(pacman -Q ruby)" ]] && { display_error "Ruby has to be installed to run this script"; exit 1; }
-
-	log "Installing homesick with gem..."
-	gem install homesick --no-document
-
-	homesick_cmd="$(ruby -e 'print Gem.user_dir')/bin/homesick"
-
-	log "Cloning and linking castle $HOMESICK_CASTLE from $GITHUB_USER's github user..."
-	$homesick_cmd clone "$GITHUB_USER/$HOMESICK_CASTLE"
-	$homesick_cmd link "$HOMESICK_CASTLE"
+    git clone https://github.com/barskern/dotfiles ~/.config/dotfiles
 }
 setup_dotfiles
 
@@ -56,7 +47,6 @@ setup_dotfiles
 ###################################
 
 log "Downloading and installing antigen.."
-mkdir -p $HOME/.config
 curl -F git.io/antigen > $HOME/.config/antigen.zsh
 
 log "Adding git aliases to git config"
@@ -64,3 +54,21 @@ echo -e "
 [include]
 	path = $HOME/.config/git/aliases
 " >> $HOME/.config/git/config
+
+### Configure lightdm ###
+#########################
+# PS! Has to be done after user setup because lightdm-mini-greeter
+# is installed from the AUR, hence cannot be installed as root
+
+sed -i -e "s/^#\?greeter-session=.*$/greeter-session=lightdm-mini-greeter/" /etc/lightdm/lightdm.conf
+sed -i -e "s/^#\?user-session=.*$/user-session=i3-sd/" /etc/lightdm/lightdm.conf
+
+sed -i -e "s/^user\s=.*$/user = $username/" /etc/lightdm/lightdm-mini-greeter.conf
+sed -i -e "s/^window-color\s=.*$/window-color = \"#F1F1F1\"/" /etc/lightdm/lightdm-mini-greeter.conf
+sed -i -e "s,^background-image\s=.*$,background-image = \"/usr/share/backgrounds/login-wall.png\"," /etc/lightdm/lightdm-mini-greeter.conf
+
+dialog_message \
+	"Lightdm background" \
+	"Add an image to \"/usr/share/backgrounds/login-wall.png\" to use as a background for the lightdm-mini-greeter"
+
+clear

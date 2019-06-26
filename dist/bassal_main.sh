@@ -283,27 +283,3 @@ rm "$tmp_username"
 
 # Add wheel group to sudoers file
 echo -e "\n%wheel ALL=(ALL) ALL" >>/etc/sudoers
-
-# Download and run user configuration as newly created user
-get_file "dist/bassal_user.sh"
-chown "$username" "$__"
-sudo --user="$username" bash "$__" 1>&3
-rm "$__"
-
-### Configure lightdm ###
-#########################
-# PS! Has to be done after user setup because lightdm-mini-greeter
-# is installed from the AUR, hence cannot be installed as root
-
-sed -i -e "s/^#\?greeter-session=.*$/greeter-session=lightdm-mini-greeter/" /etc/lightdm/lightdm.conf
-sed -i -e "s/^#\?user-session=.*$/user-session=i3-sd/" /etc/lightdm/lightdm.conf
-
-sed -i -e "s/^user\s=.*$/user = $username/" /etc/lightdm/lightdm-mini-greeter.conf
-sed -i -e "s/^window-color\s=.*$/window-color = \"#F1F1F1\"/" /etc/lightdm/lightdm-mini-greeter.conf
-sed -i -e "s,^background-image\s=.*$,background-image = \"/usr/share/backgrounds/login-wall.png\"," /etc/lightdm/lightdm-mini-greeter.conf
-
-dialog_message \
-	"Lightdm background" \
-	"Add an image to \"/usr/share/backgrounds/login-wall.png\" to use as a background for the lightdm-mini-greeter"
-
-clear
