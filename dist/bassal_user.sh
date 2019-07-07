@@ -188,10 +188,7 @@ install_aur_pkgs
 #######################################
 
 mkdir -p $HOME/.config
-setup_dotfiles() {
-    git clone https://github.com/barskern/dotfiles ~/.config/dotfiles
-}
-setup_dotfiles
+git clone --git-dir=$HOME/.config/dotfiles --work-tree=$HOME https://github.com/barskern/dotfiles $HOME/.config/dotfiles
 
 ### Configure user-environement ###
 ###################################
