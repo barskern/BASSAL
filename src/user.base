@@ -62,6 +62,7 @@ sed -i -e "s/^#\?user-session=.*$/user-session=i3-sd/" /etc/lightdm/lightdm.conf
 
 sed -i -e "s/^user\s=.*$/user = $username/" /etc/lightdm/lightdm-mini-greeter.conf
 sed -i -e "s/^window-color\s=.*$/window-color = \"#F1F1F1\"/" /etc/lightdm/lightdm-mini-greeter.conf
+sed -i -e "s/^error-color\s=.*$/error-color = \"#B71C1C\"/" /etc/lightdm/lightdm-mini-greeter.conf
 sed -i -e "s,^background-image\s=.*$,background-image = \"/usr/share/backgrounds/login-wall.png\"," /etc/lightdm/lightdm-mini-greeter.conf
 
 dialog_message \
